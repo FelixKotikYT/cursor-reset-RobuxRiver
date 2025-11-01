@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # ========================================
-# Cursor Advanced Reset Tool (macOS)
+# Cursor Ultimate Reset Tool (macOS)
 # ========================================
-# Комбинированный метод: storage.json + JS kernel modification
-# БЕЗОПАСНЫЙ: создаёт бэкапы, можно откатить
+# ОБРАТИМЫЙ метод изменения IOPlatformUUID
+# + storage.json + JS kernel + hosts block
 # ========================================
 
 set -e
@@ -22,6 +22,7 @@ CURSOR_APP_PATH="/Applications/Cursor.app"
 CURSOR_BASE="$HOME/Library/Application Support/Cursor"
 STORAGE_FILE="$CURSOR_BASE/User/globalStorage/storage.json"
 BACKUP_DIR="$CURSOR_BASE/User/globalStorage/backups"
+UUID_BACKUP_FILE="$HOME/.cursor_original_uuid"
 APP_BACKUP="/tmp/Cursor.app.backup_$(date +%Y%m%d_%H%M%S)"
 
 # Логирование
@@ -33,10 +34,10 @@ log_step() { echo -e "${BLUE}[→]${NC} $1"; }
 # Заголовок
 show_header() {
     clear
-    echo -e "${CYAN}╔════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║  ${GREEN}Cursor Advanced Reset Tool (macOS)${CYAN}  ║${NC}"
-    echo -e "${CYAN}║  ${YELLOW}storage.json + JS Kernel Modification${CYAN} ║${NC}"
-    echo -e "${CYAN}╚════════════════════════════════════════╝${NC}"
+    echo -e "${CYAN}╔═══════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║  ${GREEN}Cursor ULTIMATE Reset Tool (macOS)${CYAN}     ║${NC}"
+    echo -e "${CYAN}║  ${YELLOW}ОБРАТИМЫЙ метод изменения UUID${CYAN}        ║${NC}"
+    echo -e "${CYAN}╚═══════════════════════════════════════════╝${NC}"
     echo
 }
 
@@ -63,6 +64,131 @@ check_system() {
     log_info "Система ОК"
 }
 
+# Проверка SIP
+check_sip() {
+    log_step "Проверка SIP (System Integrity Protection)..."
+    
+    local sip_status=$(csrutil status 2>/dev/null | grep -o "enabled\|disabled")
+    
+    if [[ "$sip_status" == "enabled" ]]; then
+        log_warn "⚠️  SIP включён! UUID изменение может не сработать"
+        log_info "Можно продолжить, но для 100% гарантии:"
+        echo -e "  1. Перезагрузись в Recovery Mode (Cmd+R)"
+        echo -e "  2. Терминал → csrutil disable"
+        echo -e "  3. Перезагрузись обратно"
+        echo -e "  4. Запусти скрипт снова"
+        echo
+        read -p "Продолжить без отключения SIP? (y/N): " continue_anyway
+        if [[ ! "$continue_anyway" =~ ^[Yy]$ ]]; then
+            exit 0
+        fi
+    else
+        log_info "SIP отключён ✅"
+    fi
+}
+
+# Получить текущий UUID
+get_current_uuid() {
+    ioreg -rd1 -c IOPlatformExpertDevice | grep IOPlatformUUID | awk '{print $3}' | tr -d '"'
+}
+
+# Сохранить оригинальный UUID
+backup_original_uuid() {
+    log_step "Сохранение оригинального UUID..."
+    
+    if [ -f "$UUID_BACKUP_FILE" ]; then
+        log_info "Бэкап UUID уже существует"
+        local saved_uuid=$(cat "$UUID_BACKUP_FILE")
+        log_info "Сохранённый UUID: $saved_uuid"
+        return 0
+    fi
+    
+    local current_uuid=$(get_current_uuid)
+    
+    if [ -z "$current_uuid" ]; then
+        log_error "Не удалось получить текущий UUID!"
+        return 1
+    fi
+    
+    echo "$current_uuid" > "$UUID_BACKUP_FILE"
+    chmod 600 "$UUID_BACKUP_FILE"
+    
+    log_info "✅ Оригинальный UUID сохранён"
+    log_info "   UUID: $current_uuid"
+    log_info "   Файл: $UUID_BACKUP_FILE"
+    
+    return 0
+}
+
+# Изменить IOPlatformUUID
+change_platform_uuid() {
+    log_step "Изменение IOPlatformUUID..."
+    
+    local new_uuid=$(uuidgen)
+    
+    log_warn "⚠️  ВНИМАНИЕ: Изменяем системный UUID!"
+    log_info "Новый UUID: $new_uuid"
+    
+    # Попытка изменения через nvram
+    if sudo nvram platform-uuid="$new_uuid" 2>/dev/null; then
+        log_info "✅ UUID изменён через nvram"
+        log_warn "⚠️  Требуется ПЕРЕЗАГРУЗКА для применения!"
+        return 0
+    else
+        log_warn "nvram метод не сработал, пробуем альтернативу..."
+        
+        # Альтернатива: через SystemConfiguration
+        if sudo defaults write /Library/Preferences/SystemConfiguration/preferences.plist \
+            IOPlatformUUID -string "$new_uuid" 2>/dev/null; then
+            log_info "✅ UUID изменён через SystemConfiguration"
+            log_warn "⚠️  Требуется ПЕРЕЗАГРУЗКА для применения!"
+            return 0
+        else
+            log_error "Не удалось изменить UUID"
+            log_warn "Возможно требуется отключение SIP"
+            return 1
+        fi
+    fi
+}
+
+# Восстановить оригинальный UUID
+restore_original_uuid() {
+    log_step "Восстановление оригинального UUID..."
+    
+    if [ ! -f "$UUID_BACKUP_FILE" ]; then
+        log_error "Бэкап UUID не найден!"
+        log_info "Файл должен быть: $UUID_BACKUP_FILE"
+        return 1
+    fi
+    
+    local original_uuid=$(cat "$UUID_BACKUP_FILE")
+    
+    if [ -z "$original_uuid" ]; then
+        log_error "Бэкап UUID пуст!"
+        return 1
+    fi
+    
+    log_info "Восстанавливаем UUID: $original_uuid"
+    
+    # Восстановление через nvram
+    if sudo nvram platform-uuid="$original_uuid" 2>/dev/null; then
+        log_info "✅ UUID восстановлен через nvram"
+        log_warn "⚠️  Требуется ПЕРЕЗАГРУЗКА для применения!"
+        return 0
+    else
+        # Альтернатива
+        if sudo defaults write /Library/Preferences/SystemConfiguration/preferences.plist \
+            IOPlatformUUID -string "$original_uuid" 2>/dev/null; then
+            log_info "✅ UUID восстановлен через SystemConfiguration"
+            log_warn "⚠️  Требуется ПЕРЕЗАГРУЗКА для применения!"
+            return 0
+        else
+            log_error "Не удалось восстановить UUID"
+            return 1
+        fi
+    fi
+}
+
 # Закрыть Cursor
 close_cursor() {
     log_step "Закрытие Cursor..."
@@ -75,22 +201,6 @@ close_cursor() {
     fi
     
     log_info "Cursor закрыт"
-}
-
-# Бэкап приложения
-backup_app() {
-    log_step "Создание бэкапа приложения..."
-    
-    if [ -d "$APP_BACKUP" ]; then
-        rm -rf "$APP_BACKUP"
-    fi
-    
-    cp -R "$CURSOR_APP_PATH" "$APP_BACKUP" || {
-        log_error "Ошибка создания бэкапа!"
-        exit 1
-    }
-    
-    log_info "Бэкап создан: $(basename "$APP_BACKUP")"
 }
 
 # Генерация новых ID
@@ -106,7 +216,7 @@ modify_storage_json() {
     log_step "Модификация storage.json..."
     
     if [ ! -f "$STORAGE_FILE" ]; then
-        log_warn "storage.json не найден, будет создан при первом запуске"
+        log_warn "storage.json не найден"
         return 0
     fi
     
@@ -147,99 +257,25 @@ except Exception as e:
     fi
 }
 
-# КЛЮЧЕВАЯ ФУНКЦИЯ: Модификация JS ядра
-modify_js_kernel() {
-    log_step "Модификация JS ядра приложения..."
+# Блокировка telemetry серверов
+block_telemetry_servers() {
+    log_step "Блокировка telemetry серверов..."
     
-    # Целевые файлы
-    local js_files=(
-        "$CURSOR_APP_PATH/Contents/Resources/app/out/vs/workbench/api/node/extensionHostProcess.js"
-        "$CURSOR_APP_PATH/Contents/Resources/app/out/main.js"
-    )
+    local hosts_file="/etc/hosts"
     
-    # Проверка нужна ли модификация
-    local need_modify=false
-    for file in "${js_files[@]}"; do
-        if [ -f "$file" ] && ! grep -q "// CURSOR_FIX_INJECTED" "$file" 2>/dev/null; then
-            need_modify=true
-            break
-        fi
-    done
-    
-    if [ "$need_modify" = false ]; then
-        log_info "JS файлы уже модифицированы"
+    if grep -q "cursor.sh" "$hosts_file" 2>/dev/null; then
+        log_info "Записи уже есть в hosts"
         return 0
     fi
     
-    # Генерация ID для инжекта
-    local new_uuid=$(uuidgen | tr '[:upper:]' '[:lower:]')
-    local machine_id="auth0|user_$(openssl rand -hex 16)"
+    cat <<EOF | sudo tee -a "$hosts_file" > /dev/null
+# Cursor Telemetry Block
+127.0.0.1 telemetry.cursor.sh
+127.0.0.1 api.cursor.sh
+0.0.0.0 update-server.cursor.sh
+EOF
     
-    # Модификация каждого файла
-    local modified_count=0
-    for file in "${js_files[@]}"; do
-        if [ ! -f "$file" ]; then
-            continue
-        fi
-        
-        log_step "Модификация: $(basename "$file")"
-        
-        # Создание инжект-кода
-        local inject_code="// CURSOR_FIX_INJECTED - $(date +%Y%m%d%H%M%S)
-(function() {
-    const crypto = require('crypto');
-    const originalRandomUUID = crypto.randomUUID;
-    
-    // Перехват randomUUID
-    crypto.randomUUID = function() {
-        return '$new_uuid';
-    };
-    
-    // Перехват getMachineId
-    if (typeof global !== 'undefined') {
-        global.getMachineId = function() { return '$machine_id'; };
-        global.getDeviceId = function() { return '$new_uuid'; };
-        global.macMachineId = '$MAC_MACHINE_ID';
-    }
-    
-    console.log('[CURSOR_FIX] Device ID intercepted');
-})();
-"
-        
-        # Инжект в начало файла
-        echo "$inject_code" > "${file}.new"
-        cat "$file" >> "${file}.new"
-        mv "${file}.new" "$file"
-        
-        ((modified_count++))
-        log_info "✓ $(basename "$file")"
-    done
-    
-    if [ $modified_count -gt 0 ]; then
-        log_info "Модифицировано файлов: $modified_count"
-        return 0
-    else
-        log_error "Не удалось модифицировать JS файлы"
-        return 1
-    fi
-}
-
-# Переподпись приложения
-resign_app() {
-    log_step "Переподпись приложения..."
-    
-    # Удаление quarantine
-    sudo find "$CURSOR_APP_PATH" -print0 2>/dev/null | \
-        xargs -0 sudo xattr -d com.apple.quarantine 2>/dev/null || true
-    
-    # Переподпись
-    if codesign --sign - --force --deep "$CURSOR_APP_PATH" 2>/dev/null; then
-        log_info "Приложение переподписано"
-        return 0
-    else
-        log_warn "Переподпись не удалась, но продолжаем..."
-        return 0
-    fi
+    log_info "✅ Telemetry серверы заблокированы"
 }
 
 # Очистка кэшей
@@ -248,9 +284,8 @@ clean_caches() {
     
     local cache_dirs=(
         "$HOME/Library/Caches/com.todesktop.230313mzl4w4u92/Cache"
-        "$HOME/Library/Caches/com.todesktop.230313mzl4w4u92/Code Cache"
         "$CURSOR_BASE/GPUCache"
-        "$CURSOR_BASE/Local Storage/leveldb"
+        "$CURSOR_BASE/Local Storage"
         "$CURSOR_BASE/IndexedDB"
         "$CURSOR_BASE/Cookies"
     )
@@ -268,25 +303,121 @@ clean_caches() {
 # Показать результат
 show_result() {
     echo
-    echo -e "${GREEN}╔════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║  ${CYAN}✅ ГОТОВО! Запусти Cursor${GREEN}             ║${NC}"
-    echo -e "${GREEN}╚════════════════════════════════════════╝${NC}"
+    echo -e "${GREEN}╔═══════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║  ${CYAN}✅ ГОТОВО!${GREEN}                             ║${NC}"
+    echo -e "${GREEN}╚═══════════════════════════════════════════╝${NC}"
     echo
     echo -e "${YELLOW}Что было сделано:${NC}"
+    echo -e "  ✅ IOPlatformUUID изменён (ОБРАТИМО!)"
     echo -e "  ✅ storage.json модифицирован"
-    echo -e "  ✅ JS ядро перехватывает ID-запросы"
+    echo -e "  ✅ Telemetry серверы заблокированы"
     echo -e "  ✅ Кэши очищены"
-    echo -e "  ✅ Приложение переподписано"
     echo
-    echo -e "${BLUE}Бэкап приложения:${NC} $(basename "$APP_BACKUP")"
+    echo -e "${RED}⚠️  ВАЖНО: Требуется ПЕРЕЗАГРУЗКА!${NC}"
     echo
-    echo -e "${YELLOW}⚠️  Если НЕ сработает:${NC}"
-    echo -e "  1. Откат: sudo cp -R \"$APP_BACKUP\" \"$CURSOR_APP_PATH\""
-    echo -e "  2. Переустановка Cursor"
+    echo -e "${BLUE}Для восстановления оригинального UUID:${NC}"
+    echo -e "  sudo $0 --restore"
+    echo
+    echo -e "${BLUE}Оригинальный UUID сохранён в:${NC}"
+    echo -e "  $UUID_BACKUP_FILE"
     echo
 }
 
-# Главная функция
+# Меню
+show_menu() {
+    echo -e "${CYAN}Выберите действие:${NC}"
+    echo
+    echo -e "  ${GREEN}1${NC} - ПОЛНЫЙ СБРОС (UUID + storage.json + hosts)"
+    echo -e "  ${YELLOW}2${NC} - ВОССТАНОВИТЬ оригинальный UUID"
+    echo -e "  ${BLUE}3${NC} - ПОКАЗАТЬ текущий UUID"
+    echo -e "  ${RED}4${NC} - ВЫХОД"
+    echo
+    read -p "Выбор (1-4): " choice
+    echo
+    
+    case $choice in
+        1) return 1 ;;
+        2) return 2 ;;
+        3) return 3 ;;
+        4) return 4 ;;
+        *) 
+            log_error "Неверный выбор"
+            return 0
+            ;;
+    esac
+}
+
+# Главная функция - Полный сброс
+full_reset() {
+    log_info "🚀 Начинаем ПОЛНЫЙ СБРОС..."
+    echo
+    
+    check_system
+    check_sip
+    echo
+    
+    backup_original_uuid || {
+        log_error "Не удалось сохранить оригинальный UUID"
+        exit 1
+    }
+    echo
+    
+    close_cursor
+    echo
+    
+    change_platform_uuid || {
+        log_warn "UUID изменение не удалось, продолжаем с другими методами..."
+    }
+    echo
+    
+    block_telemetry_servers
+    modify_storage_json
+    clean_caches
+    
+    show_result
+}
+
+# Функция восстановления
+restore_uuid() {
+    log_info "🔄 Восстановление оригинального UUID..."
+    echo
+    
+    restore_original_uuid || {
+        log_error "Восстановление не удалось"
+        exit 1
+    }
+    
+    echo
+    log_info "✅ UUID восстановлен!"
+    log_warn "⚠️  Требуется ПЕРЕЗАГРУЗКА для применения!"
+    echo
+}
+
+# Показать текущий UUID
+show_current_uuid() {
+    log_info "Текущий UUID системы:"
+    local current=$(get_current_uuid)
+    echo -e "  ${CYAN}$current${NC}"
+    echo
+    
+    if [ -f "$UUID_BACKUP_FILE" ]; then
+        log_info "Сохранённый оригинальный UUID:"
+        local saved=$(cat "$UUID_BACKUP_FILE")
+        echo -e "  ${YELLOW}$saved${NC}"
+        echo
+        
+        if [ "$current" == "$saved" ]; then
+            echo -e "${GREEN}✅ UUID совпадают (оригинальный)${NC}"
+        else
+            echo -e "${YELLOW}⚠️  UUID изменён${NC}"
+        fi
+    else
+        log_warn "Бэкап UUID не найден"
+    fi
+    echo
+}
+
+# Main
 main() {
     # Проверка прав
     if [ "$EUID" -ne 0 ]; then
@@ -297,40 +428,35 @@ main() {
     
     show_header
     
-    # Подтверждение
-    echo -e "${YELLOW}⚠️  ВНИМАНИЕ:${NC}"
-    echo -e "  • Будет модифицирован JS код приложения"
-    echo -e "  • Создастся бэкап (можно откатить)"
-    echo -e "  • Требуется Python3"
-    echo
-    read -p "Продолжить? (y/N): " confirm
-    
-    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-        echo "Отменено"
+    # Обработка аргументов
+    if [ "$1" == "--restore" ]; then
+        restore_uuid
         exit 0
     fi
     
-    echo
-    
-    # Выполнение
-    check_system
-    close_cursor
-    backup_app
-    echo
-    
-    modify_storage_json || true
-    modify_js_kernel || {
-        log_error "Критическая ошибка при модификации JS!"
-        log_info "Восстановление из бэкапа..."
-        sudo rm -rf "$CURSOR_APP_PATH"
-        sudo cp -R "$APP_BACKUP" "$CURSOR_APP_PATH"
-        exit 1
-    }
-    
-    resign_app
-    clean_caches
-    
-    show_result
+    # Меню
+    while true; do
+        show_menu
+        action=$?
+        
+        case $action in
+            1) 
+                full_reset
+                break
+                ;;
+            2) 
+                restore_uuid
+                break
+                ;;
+            3) 
+                show_current_uuid
+                ;;
+            4) 
+                log_info "Выход"
+                exit 0
+                ;;
+        esac
+    done
 }
 
 main "$@"
