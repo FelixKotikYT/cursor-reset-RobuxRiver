@@ -9,7 +9,7 @@
 Открой **Терминал** и выполни:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ВАШ_USERNAME/cursor-reset/main/macos/cursor-fix-safe.sh | bash
+curl -fsSL https://raw.githubusercontent.com/FelixKotikYT/cursor-reset-RobuxRiver/main/macos/cursor-fix-safe.sh | bash
 ```
 
 ### Windows
@@ -17,7 +17,7 @@ curl -fsSL https://raw.githubusercontent.com/ВАШ_USERNAME/cursor-reset/main/m
 Открой **PowerShell от администратора** и выполни:
 
 ```powershell
-irm https://raw.githubusercontent.com/ВАШ_USERNAME/cursor-reset/main/windows/reset.ps1 | iex
+irm https://raw.githubusercontent.com/FelixKotikYT/cursor-reset-RobuxRiver/main/windows/reset.ps1 | iex
 ```
 
 ---
@@ -56,7 +56,7 @@ irm https://raw.githubusercontent.com/ВАШ_USERNAME/cursor-reset/main/windows/
 ### Способ 1: Автоматический (рекомендуется)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ВАШ_USERNAME/cursor-reset/main/macos/cursor-fix-safe.sh | bash
+curl -fsSL https://raw.githubusercontent.com/FelixKotikYT/cursor-reset-RobuxRiver/main/macos/cursor-fix-safe.sh | bash
 ```
 
 ### Способ 2: Если не помог Способ 1
@@ -80,7 +80,7 @@ curl -fsSL https://raw.githubusercontent.com/yuaotian/go-cursor-help/master/scri
 Открой **PowerShell от администратора**:
 
 ```powershell
-irm https://raw.githubusercontent.com/ВАШ_USERNAME/cursor-reset/main/windows/reset.ps1 | iex
+irm https://raw.githubusercontent.com/FelixKotikYT/cursor-reset-RobuxRiver/main/windows/reset.ps1 | iex
 ```
 
 ### Способ 2: Ручной метод
@@ -230,9 +230,9 @@ MIT License - делай что хочешь, но на свой страх и �
 
 ## 📊 Статистика
 
-![GitHub stars](https://img.shields.io/github/stars/ВАШ_USERNAME/cursor-reset?style=social)
-![GitHub forks](https://img.shields.io/github/forks/ВАШ_USERNAME/cursor-reset?style=social)
-![GitHub issues](https://img.shields.io/github/issues/ВАШ_USERNAME/cursor-reset)
+![GitHub stars](https://img.shields.io/github/stars/FelixKotikYT/cursor-reset-RobuxRiver?style=social)
+![GitHub forks](https://img.shields.io/github/forks/FelixKotikYT/cursor-reset-RobuxRiver?style=social)
+![GitHub issues](https://img.shields.io/github/issues/FelixKotikYT/cursor-reset-RobuxRiver)
 
 ---
 
