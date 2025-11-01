@@ -199,8 +199,7 @@ cursor-reset/
 1. **Проверь FAQ** выше
 2. **Создай Issue** в этом репозитории
 3. **Напиши мне:**
-   - Telegram: @ваш_ник
-   - FanPay: [ваш профиль]
+   - FanPay: https://funpay.com/users/4204601/
 
 ---
 
