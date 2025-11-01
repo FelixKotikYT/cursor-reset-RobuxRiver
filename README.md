@@ -12,12 +12,12 @@
 curl -fsSL https://raw.githubusercontent.com/FelixKotikYT/cursor-reset-RobuxRiver/main/macos/cursor-fix-safe.sh | bash
 ```
 
-### Windows
+### Windows (БЕЗОПАСНЫЙ метод)
 
 Открой **PowerShell от администратора** и выполни:
 
 ```powershell
-irm https://raw.githubusercontent.com/FelixKotikYT/cursor-reset-RobuxRiver/main/windows/reset.ps1 | iex
+irm https://raw.githubusercontent.com/FelixKotikYT/cursor-reset-RobuxRiver/main/windows/cursor-fix-safe.ps1 | iex
 ```
 
 ---
@@ -59,33 +59,51 @@ irm https://raw.githubusercontent.com/FelixKotikYT/cursor-reset-RobuxRiver/main/
 curl -fsSL https://raw.githubusercontent.com/FelixKotikYT/cursor-reset-RobuxRiver/main/macos/cursor-fix-safe.sh | bash
 ```
 
-### Способ 2: Если не помог Способ 1
+### Способ 2: Ручной метод
 
-Для новых версий Cursor (обходит улучшенную защиту):
+Подробная пошаговая инструкция: [macos/MANUAL.md](macos/MANUAL.md)
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/yuaotian/go-cursor-help/master/scripts/install.sh | sudo bash
-```
+**Когда использовать:**
 
-### Способ 3: Ручной метод
-
-Подробная инструкция: [macos/MANUAL.md](macos/MANUAL.md)
+- Хочешь полный контроль над процессом
+- Автоматический скрипт не работает
+- Хочешь понять что именно меняется
 
 ---
 
 ## 🪟 Windows
 
-### Способ 1: Автоматический
+### Способ 1: Автоматический (рекомендуется)
 
-Открой **PowerShell от администратора**:
+Открой **PowerShell от администратора** и выполни:
 
 ```powershell
-irm https://raw.githubusercontent.com/FelixKotikYT/cursor-reset-RobuxRiver/main/windows/reset.ps1 | iex
+irm https://raw.githubusercontent.com/FelixKotikYT/cursor-reset-RobuxRiver/main/windows/cursor-fix-safe.ps1 | iex
 ```
 
-### Способ 2: Ручной метод
+**Что делает:**
 
-Подробная инструкция: [windows/MANUAL.md](windows/MANUAL.md)
+- ✅ Закрывает Cursor автоматически
+- ✅ Создаёт бэкап перед изменениями
+- ✅ Меняет все 4 telemetry ID
+- ✅ Чистит кэши отслеживания
+- ✅ Сохраняет настройки и расширения
+
+### Способ 2: Если не помог Способ 1
+
+Скачай скрипт и запусти вручную:
+
+```powershell
+# Скачать скрипт
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/FelixKotikYT/cursor-reset-RobuxRiver/main/windows/cursor-fix-safe.ps1" -OutFile "$env:TEMP\cursor-fix.ps1"
+
+# Запустить
+PowerShell -ExecutionPolicy Bypass -File "$env:TEMP\cursor-fix.ps1"
+```
+
+### Способ 3: Ручной метод
+
+Подробная пошаговая инструкция: [windows/MANUAL.md](windows/MANUAL.md)
 
 ---
 
@@ -141,8 +159,8 @@ irm https://raw.githubusercontent.com/FelixKotikYT/cursor-reset-RobuxRiver/main/
 
 Попробуй:
 
-1. **macOS:** Используй Способ 2 (продвинутый метод)
-2. **Windows:** Используй ручной метод
+1. **macOS/Windows:** Используй ручной метод (Способ 2/3)
+2. Проверь что Cursor полностью закрыт перед запуском
 3. Напиши в Issues — помогу разобраться
 </details>
 
@@ -177,17 +195,15 @@ Copy-Item "$env:APPDATA\Cursor\User\globalStorage\backups\storage.backup_*.json"
 ## 📁 Структура репозитория
 
 ```
-cursor-reset/
+cursor-reset-RobuxRiver/
 ├── README.md              # Основная документация
+├── LICENSE                # MIT License
 ├── macos/
 │   ├── cursor-fix-safe.sh # Безопасный скрипт (рекомендуется)
-│   ├── cursor-reset.sh    # Простой скрипт
-│   ├── macos.sh           # Продвинутый скрипт
 │   └── MANUAL.md          # Ручная инструкция
-├── windows/
-│   ├── reset.ps1          # PowerShell скрипт
-│   └── MANUAL.md          # Ручная инструкция
-└── LICENSE                # MIT License
+└── windows/
+    ├── cursor-fix-safe.ps1 # PowerShell скрипт (безопасный)
+    └── MANUAL.md           # Ручная инструкция
 ```
 
 ---
@@ -221,9 +237,8 @@ MIT License - делай что хочешь, но на свой страх и �
 
 ## 🌟 Благодарности
 
-- [yuaotian/go-cursor-help](https://github.com/yuaotian/go-cursor-help) — за вдохновение
-- [justonemorenight/Fix-Cursor](https://github.com/justonemorenight/Fix-Cursor-Too-many-free-trial-accounts-used-on-this-machine) — за идеи
 - Всем тестерам и контрибьюторам
+- Сообществу Cursor за обратную связь
 
 ---
 
