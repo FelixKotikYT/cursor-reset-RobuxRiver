@@ -168,18 +168,21 @@ except Exception as e:
     fi
 }
 
-# Очистка ТОЛЬКО кэшей отслеживания (БЕЗ удаления пользовательских данных)
+# Очистка ВСЕХ tracking кэшей (усиленная версия 2024)
 clean_tracking_caches() {
-    log_step "Очистка кэшей отслеживания..."
+    log_step "Глубокая очистка кэшей отслеживания..."
     
     local cleaned=0
     
-    # Cursor Caches (НЕ трогаем CachedData с расширениями!)
+    # 1. Cursor Caches (НЕ трогаем CachedData с расширениями!)
     local cache_dirs=(
         "$HOME/Library/Caches/com.todesktop.230313mzl4w4u92/Cache"
         "$HOME/Library/Caches/com.todesktop.230313mzl4w4u92/Code Cache"
+        "$HOME/Library/Caches/com.todesktop.230313mzl4w4u92/DawnCache"
         "$CURSOR_BASE/GPUCache"
         "$CURSOR_BASE/CachedExtensionVSIXs"
+        "$CURSOR_BASE/Cache"
+        "$CURSOR_BASE/Code Cache"
     )
     
     for dir in "${cache_dirs[@]}"; do
@@ -188,7 +191,7 @@ clean_tracking_caches() {
         fi
     done
     
-    # IndexedDB / LocalStorage (БЕЗ workspace)
+    # 2. IndexedDB / LocalStorage / Session Storage (tracking данные)
     local storage_patterns=(
         "$CURSOR_BASE/Local Storage/leveldb"
         "$CURSOR_BASE/IndexedDB"
@@ -201,7 +204,37 @@ clean_tracking_caches() {
         fi
     done
     
-    log_info "Очищено кэшей: $cleaned"
+    # 3. Cookies (могут содержать telemetry tracking)
+    local cookie_paths=(
+        "$CURSOR_BASE/Cookies"
+        "$CURSOR_BASE/Cookies-journal"
+        "$HOME/Library/Caches/com.todesktop.230313mzl4w4u92/Cookies"
+    )
+    
+    for cookie in "${cookie_paths[@]}"; do
+        if [ -e "$cookie" ]; then
+            rm -rf "$cookie" 2>/dev/null && ((cleaned++)) || true
+        fi
+    done
+    
+    # 4. Network Cache (могут хранить tracking запросы)
+    local network_caches=(
+        "$CURSOR_BASE/Network Persistent State"
+        "$HOME/Library/Caches/com.todesktop.230313mzl4w4u92/NetworkCache"
+    )
+    
+    for cache in "${network_caches[@]}"; do
+        if [ -e "$cache" ]; then
+            rm -rf "$cache" 2>/dev/null && ((cleaned++)) || true
+        fi
+    done
+    
+    # 5. Blob Storage (может содержать tracking данные)
+    if [ -d "$CURSOR_BASE/blob_storage" ]; then
+        rm -rf "$CURSOR_BASE/blob_storage" 2>/dev/null && ((cleaned++)) || true
+    fi
+    
+    log_info "Глубокая очистка: $cleaned элементов"
 }
 
 # Показать что НЕ было тронуто
