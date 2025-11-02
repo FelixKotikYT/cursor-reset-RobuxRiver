@@ -287,9 +287,7 @@ show_result() {
     echo -e "  Должно показать: ${GREEN}127.0.0.1${NC}"
     
     echo -e "\n${YELLOW}⚠️  Если НЕ сработало:${NC}"
-    echo -e "  Откат: ${BLUE}bash $(dirname "$0")/rollback.sh${NC}"
-    echo -e "  (или запусти этот скрипт с опцией --rollback)"
-    
+    echo -e "  Откат: ${BLUE}bash $(basename "$0") --rollback${NC}"
     echo ""
 }
 
@@ -347,16 +345,23 @@ main() {
         exit 0
     fi
     
-    log_warning "Этот скрипт изменит:"
-    log_warning "  • /etc/hosts (нужен sudo)"
-    log_warning "  • storage.json"
-    log_warning "  • Удалит кэши Cursor"
-    echo ""
-    read -p "$(echo -e ${YELLOW}Продолжить? [y/N]:${NC} )" confirm
-    
-    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-        log_info "Отменено пользователем"
-        exit 0
+    # Проверка: если stdin не терминал (pipe), пропустить подтверждение
+    if [ -t 0 ]; then
+        log_warning "Этот скрипт изменит:"
+        log_warning "  • /etc/hosts (нужен sudo)"
+        log_warning "  • storage.json"
+        log_warning "  • Удалит кэши Cursor"
+        echo ""
+        read -p "$(echo -e ${YELLOW}Продолжить? [y/N]:${NC} )" confirm
+        
+        if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+            log_info "Отменено пользователем"
+            exit 0
+        fi
+    else
+        log_info "Автоматический режим (запуск через curl)"
+        log_warning "Скрипт изменит: /etc/hosts, storage.json, кэши"
+        sleep 2
     fi
     
     # Выполнение
